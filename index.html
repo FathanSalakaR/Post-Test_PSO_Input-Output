@@ -1,0 +1,719 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Post-Test Sistem Operasi - Laboratorium Teknik Digital</title>
+  <meta name="description" content="Sistem Ujian Post-Test Praktikum Sistem Operasi Berbasis Terminal Ubuntu Server - Laboratorium Teknik Digital">
+  
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600;700&family=Outfit:wght@300;400;500;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body class="dark-theme">
+
+  <!-- =========================================================================
+       VIEW 1: HALAMAN LOGIN / GERBANG POST-TEST PRAKTIKAN
+       ========================================================================= -->
+  <section class="login-screen-view" id="viewLoginScreen">
+    <div class="login-card glass-card">
+      <div class="login-header">
+        <div class="lab-badge-icon">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+            <polyline points="4 17 10 11 4 5"></polyline>
+            <line x1="12" y1="19" x2="20" y2="19"></line>
+          </svg>
+        </div>
+        <div class="lab-brand-info">
+          <h2>LABORATORIUM TEKNIK DIGITAL</h2>
+          <h4>Praktikum Sistem Operasi • Ujian Post-Test</h4>
+        </div>
+      </div>
+
+      <div class="login-rules-banner">
+        <span class="banner-icon">ℹ️</span>
+        <div class="banner-text">
+          <strong>Ketentuan Ujian:</strong> Pengerjaan dilakukan secara bertahap level demi level (waktu 25 menit per level). Masukkan kode tes yang diberikan oleh Asisten Praktikum di kelas Anda.
+        </div>
+      </div>
+
+      <form id="formPracticalLogin" class="login-form">
+        <div class="form-group">
+          <label for="loginName">Nama Lengkap Praktikan:</label>
+          <input type="text" id="loginName" placeholder="Contoh: Muhammad Fikri" required autocomplete="off">
+        </div>
+
+        <div class="form-row-2">
+          <div class="form-group">
+            <label for="loginNPM">NPM / NIM:</label>
+            <input type="text" id="loginNPM" placeholder="Contoh: 2115061001" required autocomplete="off">
+          </div>
+          <div class="form-group">
+            <label for="loginClass">Kelas Praktikum:</label>
+            <select id="loginClass" required>
+              <option value="PSO A">PSO A</option>
+              <option value="PSO B">PSO B</option>
+              <option value="PSO C">PSO C</option>
+              <option value="PSO D">PSO D</option>
+              <option value="PSO E">PSO E</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="loginTestCode">Kode Akses Post-Test (Dari Asprak):</label>
+          <div class="token-input-wrap">
+            <input type="text" id="loginTestCode" placeholder="Masukkan kode ujian kelas..." required autocomplete="off">
+          </div>
+          <span class="input-hint-sub">*Kode tes berbeda untuk setiap kelas dan hanya dimiliki oleh Asisten Praktikum.</span>
+        </div>
+
+        <div id="loginErrorMessage" class="login-error-alert hidden">
+          Kode akses post-test tidak sesuai untuk kelas yang dipilih!
+        </div>
+
+        <button type="submit" class="btn btn-primary btn-large btn-block" id="btnStartExam">
+          <span>Verifikasi & Mulai Post-Test 🚀</span>
+        </button>
+      </form>
+
+      <div class="login-footer">
+        <button type="button" class="asprak-secret-link" id="btnOpenAsprakFromLogin">
+          🔐 Khusus Asisten Praktikum (Panel Asprak & Kelola Kode)
+        </button>
+      </div>
+    </div>
+  </section>
+
+  <!-- =========================================================================
+       VIEW 2: WORKSPACE POST-TEST (TERMINAL UBUNTU & TAHAPAN SOAL)
+       ========================================================================= -->
+  <div class="workspace-screen-view hidden" id="viewWorkspace">
+    <!-- Top Navigation Bar -->
+    <header class="app-header">
+      <div class="header-left">
+        <div class="brand-logo">
+          <div class="terminal-badge-icon">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+              <polyline points="4 17 10 11 4 5"></polyline>
+              <line x1="12" y1="19" x2="20" y2="19"></line>
+            </svg>
+          </div>
+          <div class="brand-text">
+            <span class="brand-title">LAB TEKNIK DIGITAL <span class="badge-tag">POST-TEST</span></span>
+            <span class="brand-subtitle" id="headerLabSubtitle">Sistem Operasi • Ubuntu Server</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Student Info & Cumulative Score -->
+      <div class="header-center">
+        <div class="student-chip" id="studentProfileBadge" title="Identitas Praktikan Aktif">
+          <span class="avatar-circle">👨‍💻</span>
+          <div class="student-meta">
+            <span class="student-name" id="displayStudentName">Muhammad Fikri</span>
+            <span class="student-npm" id="displayStudentNPM">NPM: 2115061001 • PSO A</span>
+          </div>
+        </div>
+
+        <!-- 25-Minute Countdown Timer -->
+        <div class="timer-chip" id="timerChip" title="Waktu Pengerjaan Level Aktif (25 Menit)">
+          <span class="timer-icon">⏱️</span>
+          <span class="timer-val" id="displayTimer">25:00</span>
+        </div>
+
+        <!-- Cumulative Score Bar -->
+        <div class="gamification-bar">
+          <div class="stat-item" title="Level yang sedang dikerjakan">
+            <span class="stat-label">LEVEL</span>
+            <span class="stat-val highlight" id="currentLevelNumberBadge">1</span>
+          </div>
+          <div class="stat-item" title="Nilai Gabungan Akumulatif">
+            <span class="stat-label">NILAI GABUNGAN</span>
+            <span class="stat-val green-text" id="totalScoreBadge">0 / 100</span>
+          </div>
+          <div class="stat-item" title="Penalti dari penggunaan petunjuk">
+            <span class="stat-label">PENALTI</span>
+            <span class="stat-val text-danger" id="penaltyScoreBadge">-0</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Header Action Controls -->
+      <div class="header-right">
+        <button class="header-btn" id="btnOpenBrowser" title="Simulasi Browser untuk verifikasi Apache (Percobaan 2-1)">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="2" y1="12" x2="22" y2="12"></line><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path></svg>
+          <span>Virtual Browser</span>
+        </button>
+
+        <button class="header-btn sound-toggle" id="btnToggleSound" title="Aktifkan/Matikan Suara">
+          <svg id="soundIconOn" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path></svg>
+          <svg id="soundIconOff" class="hidden" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><line x1="23" y1="9" x2="17" y2="15"></line><line x1="17" y1="9" x2="23" y2="15"></line></svg>
+        </button>
+
+        <button class="header-btn btn-asprak" id="btnOpenAsprak" title="Panel Asisten Praktikum (Diproteksi Password Master)">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
+          <span>Panel Asprak</span>
+        </button>
+
+        <button class="header-btn btn-logout" id="btnLogoutStudent" title="Keluar dari sesi ujian praktikan">
+          <span>Keluar</span>
+        </button>
+      </div>
+    </header>
+
+    <!-- Main Workspace Layout with Smooth Scrolling -->
+    <main class="main-layout" id="mainLayout">
+      <!-- Left Sidebar: Level Map & Active Mission -->
+      <aside class="sidebar-quest" id="sidebarQuest">
+        <!-- Level Sequential Stepper -->
+        <div class="sidebar-section-header">
+          <div class="section-title-wrap">
+            <span class="icon-pulse">🎯</span>
+            <h3>Pengerjaan Bertahap</h3>
+          </div>
+          <span class="badge-counter" id="unlockedLevelCounter">Level 1 / 8</span>
+        </div>
+
+        <!-- Level Pills (Sequential progression) -->
+        <div class="level-pills-slider" id="levelPillsContainer">
+          <!-- Rendered via JS -->
+        </div>
+
+        <!-- Active Mission Card -->
+        <div class="active-mission-card">
+          <div class="mission-header">
+            <div class="mission-status-chip" id="missionStatusChip">
+              <span class="dot-indicator running"></span>
+              <span id="missionStatusText">LEVEL AKTIF</span>
+            </div>
+            <span class="mission-xp-badge" id="missionXpBadge">Bobot: 100 Poin</span>
+          </div>
+
+          <h2 class="mission-title" id="missionTitle">Memuat Level...</h2>
+          <div class="mission-desc" id="missionDesc">
+            <!-- Case statement -->
+          </div>
+
+          <!-- Mission Checklist (No Spoilers) -->
+          <div class="mission-objectives-box">
+            <div class="box-title">
+              <span>📋 Instruksi Tugas yang Harus Dipenuhi:</span>
+            </div>
+            <ul class="objectives-list" id="objectivesList">
+              <!-- Dynamically populated -->
+            </ul>
+          </div>
+
+          <!-- Hint Section with Penalty -->
+          <div class="hint-card-locked" id="hintCardContainer">
+            <div class="hint-warning-bar">
+              <span class="warning-icon">💡</span>
+              <div class="warning-text">
+                <strong>Bantuan Petunjuk Perintah</strong>
+                <p id="hintWarningText">Petunjuk 1 Soal: <span class="text-danger font-bold">-20 Poin</span> &bull; Semua Petunjuk Level: <span class="text-danger font-bold">-30 Poin</span></p>
+              </div>
+            </div>
+            <div class="hint-btn-group" id="hintBtnGroup">
+              <button type="button" class="btn btn-unlock-hint" id="btnUnlockSingleHint">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                <span id="btnUnlockSingleHintText">Buka 1 Soal Saja (-20 Poin)</span>
+              </button>
+              <button type="button" class="btn btn-unlock-hint btn-unlock-all" id="btnUnlockAllHint">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 9.9-1"></path></svg>
+                <span id="btnUnlockAllHintText">Buka Semua Petunjuk Level Ini (-30 Poin)</span>
+              </button>
+            </div>
+            <div class="hint-revealed-box hidden" id="hintRevealedBox">
+              <div class="hint-revealed-header">
+                <span id="hintRevealedTitle">📖 Petunjuk Terbuka:</span>
+                <button type="button" class="btn-upgrade-hint hidden" id="btnUpgradeAllHint">🔓 Buka Semua Petunjuk (+10 Poin)</button>
+              </div>
+              <pre class="hint-code-block" id="hintCodeBlock"></pre>
+            </div>
+          </div>
+
+          <!-- Mission Action: Submit / Validate & Next Level -->
+          <div class="mission-actions">
+            <button type="button" class="btn btn-check" id="btnManualValidate">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polyline points="20 6 9 17 4 12"></polyline></svg>
+              <span>Kumpulkan & Evaluasi Level Ini</span>
+            </button>
+            <button type="button" class="btn btn-next hidden" id="btnNextLevel">
+              <span>Lanjut ke Level Berikutnya 🚀</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Virtual File Tree -->
+        <div class="file-explorer-widget">
+          <div class="widget-header">
+            <div class="widget-title">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>
+              <span>Virtual File Tree</span>
+            </div>
+            <div class="widget-actions">
+              <button type="button" class="icon-small-btn" id="btnRefreshTree" title="Refresh Tree">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 4v6h-6"></path><path d="M1 20v-6h6"></path><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>
+              </button>
+            </div>
+          </div>
+          <div class="file-tree-content" id="virtualFileTree"></div>
+        </div>
+      </aside>
+
+      <!-- Right Workspace: Ubuntu Terminal with Smooth Scrolling -->
+      <section class="workspace-terminal" id="workspaceTerminal">
+        <div class="ubuntu-terminal-window" id="terminalWindow">
+          <div class="terminal-titlebar">
+            <div class="window-controls">
+              <span class="control-btn close"></span>
+              <span class="control-btn minimize"></span>
+              <span class="control-btn maximize"></span>
+            </div>
+            <div class="window-tab active">
+              <svg class="tab-terminal-icon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="4 17 10 11 4 5"></polyline><line x1="12" y1="19" x2="20" y2="19"></line></svg>
+              <span class="tab-title" id="terminalTabTitle">praktikan@ubuntu-server: ~</span>
+            </div>
+            <div class="terminal-quick-actions">
+              <button type="button" class="term-btn" id="btnCtrlC" title="Kirim Sinyal CTRL+C (Batalkan / Interupsi)">CTRL + C</button>
+              <button type="button" class="term-btn" id="btnCtrlD" title="Kirim Sinyal CTRL+D (EOF / Selesai Input File)">CTRL + D</button>
+              <button type="button" class="term-btn" id="btnClearTerm" title="Bersihkan Layar Terminal">Clear</button>
+            </div>
+          </div>
+
+          <!-- Terminal Output Body (Vertical Scrollable) -->
+          <div class="terminal-body" id="terminalBody">
+            <div class="terminal-motd" id="terminalMotd">
+              <pre class="motd-ascii">
+ _   _ _                 _          ____                           
+| | | | |__  _   _ _ __ | |_ _   _ / ___|  ___ _ ____   _____ _ __ 
+| | | | '_ \| | | | '_ \| __| | | |\___ \ / _ \ '__\ \ / / _ \ '__|
+| |_| | |_) | |_| | | | | |_| |_| | ___) |  __/ |   \ V /  __/ |   
+ \___/|_.__/ \__,_|_| |_|\__|\__,_| |____/ \___|_|    \_/ \___|_|   
+              </pre>
+              <div class="motd-details">
+                <p>Ubuntu 22.04.4 LTS (GNU/Linux 5.15.0-generic x86_64)</p>
+                <p>* Lingkungan: <span class="green-text">Laboratorium Teknik Digital — Post-Test Sistem Operasi</span></p>
+                <p>* Waktu pengerjaan per level: <span class="accent-text">25 Menit</span>. Kerjakan instruksi di panel kiri secara bertahap.</p>
+                <hr class="term-divider">
+              </div>
+            </div>
+
+            <div class="terminal-output" id="terminalOutput"></div>
+
+            <div class="terminal-prompt-line" id="promptLine">
+              <span class="prompt-user">praktikan@ubuntu-server</span><span class="prompt-colon">:</span><span class="prompt-path" id="promptCurrentPath">~</span><span class="prompt-symbol">$</span>
+              <div class="input-wrapper">
+                <input type="text" id="terminalInput" class="terminal-input" autocomplete="off" spellcheck="false" autofocus>
+              </div>
+            </div>
+
+            <!-- Multiline Prompt (cat >) -->
+            <div class="multiline-prompt-box hidden" id="multilinePromptBox">
+              <div class="multiline-header">
+                <span class="multiline-badge">MODE INPUT LANGSUNG (cat &gt;)</span>
+                <span class="multiline-hint">Ketik baris demi baris lalu Enter. Selesai & simpan: tekan <strong>Ctrl+D</strong> (atau klik tombol <strong>[CTRL + D]</strong> / [CTRL + C]).</span>
+              </div>
+              <div class="multiline-history" id="multilineHistory"></div>
+              <div class="multiline-input-row">
+                <span class="multiline-arrow">&gt;</span>
+                <input type="text" id="multilineInput" class="terminal-input" autocomplete="off" spellcheck="false">
+              </div>
+            </div>
+          </div>
+
+          <!-- GNU nano Editor View (Decoupled from scrollable terminal body) -->
+          <div class="nano-editor-view hidden" id="nanoEditorView">
+            <div class="nano-header">
+              <span class="nano-brand">GNU nano 6.2</span>
+              <span class="nano-filename" id="nanoFileName">biodata.txt</span>
+              <span class="nano-status" id="nanoModifiedStatus"></span>
+            </div>
+            <div class="nano-body">
+              <textarea id="nanoTextArea" spellcheck="false" placeholder="Tulis isi berkas di sini..."></textarea>
+            </div>
+            <div class="nano-footer">
+              <div class="nano-shortcut"><span class="key">^G</span> Get Help</div>
+              <div class="nano-shortcut" id="btnNanoWriteOut"><span class="key">^O</span> WriteOut</div>
+              <div class="nano-shortcut"><span class="key">^W</span> Where Is</div>
+              <div class="nano-shortcut"><span class="key">^K</span> Cut Text</div>
+              <div class="nano-shortcut" id="btnNanoExit"><span class="key">^X</span> Exit</div>
+              <div class="nano-shortcut"><span class="key">^R</span> Read File</div>
+              <div class="nano-shortcut"><span class="key">^\</span> Replace</div>
+              <div class="nano-shortcut"><span class="key">^U</span> Paste Text</div>
+            </div>
+            <div class="nano-confirm-bar hidden" id="nanoConfirmBar">
+              <span id="nanoConfirmQuestion">Save modified buffer? (Y=Yes, N=No, C=Cancel)</span>
+              <input type="text" id="nanoConfirmInput" maxlength="1" class="nano-confirm-input">
+            </div>
+          </div>
+
+          <!-- TOP Process View -->
+          <div class="top-screen-view hidden" id="topScreenView">
+            <div class="top-header" id="topHeader"></div>
+            <div class="top-table" id="topTable"></div>
+            <div class="top-footer">
+              <span>Tekan <kbd>q</kbd> atau klik tombol <button type="button" id="btnExitTop" class="pill-btn">Keluar (q)</button> untuk kembali ke terminal</span>
+            </div>
+          </div>
+
+          <!-- Bottom Statusbar -->
+          <div class="terminal-statusbar">
+            <div class="status-left">
+              <span class="status-indicator-dot online"></span>
+              <span class="status-text">Ubuntu 22.04 LTS (Bash 5.1)</span>
+              <span class="status-sep">|</span>
+              <span id="currentProcessStatus">Apache2: <span class="text-amber" id="apacheStatusPill">Active</span></span>
+            </div>
+            <div class="status-right">
+              <span class="key-shortcut-hint"><kbd>Tab</kbd> Autocomplete</span>
+              <span class="key-shortcut-hint"><kbd>↑</kbd><kbd>↓</kbd> History</span>
+              <span class="key-shortcut-hint"><kbd>Ctrl+L</kbd> Clear</span>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <!-- =========================================================================
+       MODAL: PORTAL ASISTEN PRAKTIKUM (DIAGRAM BATANG & KODE KELAS)
+       ========================================================================= -->
+  <div class="modal-backdrop hidden" id="modalAsprakPortal">
+    <div class="modal-box asprak-modal-box">
+      <div class="modal-header">
+        <div class="modal-title-wrap">
+          <span class="modal-icon">🛡️</span>
+          <div>
+            <h3>PORTAL ASISTEN PRAKTIKUM (LTD)</h3>
+            <span class="modal-sub">Rekap Nilai Gabungan, Diagram Statistik & Manajemen Kode Kelas</span>
+          </div>
+        </div>
+        <button type="button" class="modal-close-btn" id="closeAsprakModal">&times;</button>
+      </div>
+
+      <!-- Auth Passcode Gate for Asprak -->
+      <div class="asprak-auth-view" id="asprakAuthView">
+        <div class="auth-card">
+          <div class="auth-lock-icon">🔒</div>
+          <h4>Verifikasi Asisten Praktikum</h4>
+          <p>Area ini terenkripsi dan khusus untuk Asisten Laboratorium Teknik Digital. Masukkan Master PIN:</p>
+          <div class="pin-input-wrap">
+            <input type="password" id="inputAsprakPin" placeholder="Masukkan PIN Master..." autocomplete="current-password" autofocus>
+            <button type="button" class="btn btn-primary" id="btnSubmitAsprakPin">Buka Portal</button>
+          </div>
+          <div class="asprak-pin-error hidden" id="asprakPinError">PIN Master salah! Akses ditolak.</div>
+          <span class="pin-hint">*PIN Master bersifat rahasia dan hanya dimiliki oleh Tim Asisten Praktikum.</span>
+        </div>
+      </div>
+
+      <!-- Asprak Authenticated Dashboard -->
+      <div class="asprak-dashboard-view hidden" id="asprakDashboardView">
+        <!-- Asprak Navigation Tabs -->
+        <div class="asprak-nav-tabs">
+          <button type="button" class="asprak-tab-btn active" id="tabBtnScores">📊 Rekap Nilai & Diagram</button>
+          <button type="button" class="asprak-tab-btn" id="tabBtnCodes">🔑 Manajemen Kode Kelas</button>
+        </div>
+
+        <!-- TAB 1: SCORES & BAR CHART -->
+        <div class="asprak-tab-pane" id="paneScores">
+          <!-- Class Bar Chart Section -->
+          <div class="asprak-chart-section">
+            <div class="chart-header">
+              <div class="chart-title-wrap">
+                <h4>📈 Diagram Distribusi Nilai Gabungan</h4>
+                <span class="chart-sub" id="chartClassSub">Menampilkan Statistik Seluruh Kelas</span>
+              </div>
+              <div class="chart-filters">
+                <label>Filter Kelas:</label>
+                <select id="filterAsprakClass" class="asprak-select">
+                  <option value="ALL">Semua Kelas (PSO A - E)</option>
+                  <option value="PSO A">PSO A</option>
+                  <option value="PSO B">PSO B</option>
+                  <option value="PSO C">PSO C</option>
+                  <option value="PSO D">PSO D</option>
+                  <option value="PSO E">PSO E</option>
+                </select>
+              </div>
+            </div>
+
+            <!-- SVG Bar Chart -->
+            <div class="bar-chart-container" id="barChartContainer">
+              <!-- Rendered via JS -->
+            </div>
+          </div>
+
+          <!-- Toolbar & Table -->
+          <div class="asprak-toolbar">
+            <div class="toolbar-left">
+              <input type="text" id="searchAsprakStudent" placeholder="Cari Nama / NPM praktikan..." class="table-search-input">
+            </div>
+            <div class="toolbar-right">
+              <button type="button" class="btn btn-export-excel" id="btnExportExcel">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+                <span>Ekspor Excel (.xlsx)</span>
+              </button>
+              <button type="button" class="btn btn-export-csv" id="btnExportCsv">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+                <span>Ekspor CSV</span>
+              </button>
+              <button type="button" class="btn btn-clear-data" id="btnClearAsprakData" title="Kosongkan rekap nilai">
+                🗑️
+              </button>
+            </div>
+          </div>
+
+          <div class="asprak-table-wrap">
+            <table class="asprak-table" id="tableAsprakRecords">
+              <thead>
+                <tr>
+                  <th>No</th>
+                  <th>Nama Praktikan</th>
+                  <th>NPM</th>
+                  <th>Kelas</th>
+                  <th>Level Terakhir</th>
+                  <th>Nilai Gabungan</th>
+                  <th>Penalti Petunjuk</th>
+                  <th>Nilai Akhir</th>
+                  <th>Status</th>
+                  <th>Waktu</th>
+                </tr>
+              </thead>
+              <tbody id="tbodyAsprakRecords"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- TAB 2: PASSCODE MANAGEMENT PER CLASS -->
+        <div class="asprak-tab-pane hidden" id="paneCodes">
+          <div class="code-manager-card">
+            <h4>🔑 Daftar Kode Akses Post-Test Per Kelas</h4>
+            <p class="code-manager-desc">Kode ini harus dimasukkan praktikan di halaman login sebelum ujian dimulai. Asisten dapat mengubah kode per kelas di bawah ini:</p>
+
+            <div class="code-grid" id="classCodeGrid">
+              <!-- Dynamically rendered -->
+            </div>
+
+            <div class="code-actions">
+              <button type="button" class="btn btn-primary" id="btnSaveClassCodes">Simpan Perubahan Kode</button>
+              <button type="button" class="btn btn-secondary" id="btnResetDefaultCodes">Reset ke Kode Default</button>
+            </div>
+          </div>
+
+          <div class="code-manager-card" style="margin-top: 16px;">
+            <h4>🔒 Ubah Master PIN Asprak</h4>
+            <p class="code-manager-desc">Ganti Master PIN untuk keamanan akses Portal Asisten Praktikum:</p>
+            <div style="display: flex; gap: 8px; max-width: 420px; align-items: center; margin-top: 8px;">
+              <input type="password" id="inputNewMasterPin" placeholder="Masukkan PIN Master baru..." style="flex: 1; padding: 7px 12px; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.15); border-radius: 6px; color: #fff; font-size: 13px;">
+              <button type="button" class="btn btn-primary" id="btnSaveMasterPin">Ubah PIN</button>
+            </div>
+            <div id="pinChangeFeedback" class="hidden" style="margin-top: 8px; font-size: 12px; color: #10b981;">PIN Master berhasil diperbarui!</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- =========================================================================
+       MODAL: VIRTUAL BROWSER (PERCOBAAN 2-1)
+       ========================================================================= -->
+  <div class="modal-backdrop hidden" id="modalVirtualBrowser">
+    <div class="modal-box browser-modal-box">
+      <div class="browser-chrome-bar">
+        <div class="browser-dots">
+          <span class="b-dot red"></span>
+          <span class="b-dot yellow"></span>
+          <span class="b-dot green"></span>
+        </div>
+        <div class="browser-nav-btns">
+          <button type="button" class="b-nav-btn">&larr;</button>
+          <button type="button" class="b-nav-btn">&rarr;</button>
+          <button type="button" class="b-nav-btn" id="btnBrowserReload">&#x21bb;</button>
+        </div>
+        <div class="browser-address-bar">
+          <span class="url-protocol">http://</span>
+          <span class="url-host" id="browserUrlHost">192.168.1.50</span>
+          <span class="url-path">/</span>
+        </div>
+        <button type="button" class="modal-close-btn" id="closeBrowserModal">&times;</button>
+      </div>
+      <div class="browser-viewport" id="browserViewport"></div>
+    </div>
+  </div>
+
+  <!-- =========================================================================
+       MODAL: FILE INSPECTOR
+       ========================================================================= -->
+  <div class="modal-backdrop hidden" id="modalFileViewer">
+    <div class="modal-box glass-card file-inspect-box">
+      <div class="modal-header">
+        <div class="modal-title-wrap">
+          <span class="modal-icon">📄</span>
+          <h3 id="inspectFileName">prodi.txt</h3>
+        </div>
+        <button type="button" class="modal-close-btn" id="closeFileViewer">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="file-meta-bar">
+          <span id="inspectFilePath">Path: /home/praktikan/Level1/prodi.txt</span>
+          <span id="inspectFileSize">0 bytes</span>
+        </div>
+        <pre class="file-content-preview" id="inspectFileContent"></pre>
+      </div>
+    </div>
+  </div>
+
+  <!-- =========================================================================
+       MODAL: LEVEL VICTORY CELEBRATION
+       ========================================================================= -->
+  <div class="modal-backdrop hidden" id="modalLevelComplete">
+    <div class="modal-box celebration-box">
+      <div class="celebration-confetti">🎉 🎯 ⭐ 💻</div>
+      <h2 class="congrats-title">LEVEL BERHASIL DISELESAIKAN!</h2>
+      <p class="congrats-level-name" id="congratsLevelTitle">Level Selesai</p>
+      
+      <div class="reward-card">
+        <div class="reward-xp">
+          <span class="xp-val" id="congratsXpVal">+100</span>
+          <span class="xp-unit">POIN DIDAPATKAN</span>
+        </div>
+        <div class="reward-badge-icon">🎖️</div>
+      </div>
+
+      <p class="congrats-message" id="congratsMessage">Seluruh instruksi pada level ini telah terverifikasi dengan benar.</p>
+      
+      <div class="modal-actions center">
+        <button type="button" class="btn btn-primary btn-large" id="btnProceedNextModal">Lanjut ke Level Berikutnya &rarr;</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- =========================================================================
+       MODAL: CERTIFICATE OF COMPLETION
+       ========================================================================= -->
+  <div class="modal-backdrop hidden" id="modalFinalVictory">
+    <div class="modal-box certificate-box">
+      <div class="cert-border">
+        <div class="cert-header">
+          <span class="cert-logo">🎓</span>
+          <h2>REKAP HASIL POST-TEST</h2>
+          <h4>LABORATORIUM TEKNIK DIGITAL</h4>
+        </div>
+        <div class="cert-body">
+          <p>Diberikan kepada praktikan:</p>
+          <h1 class="cert-name" id="certStudentName">Muhammad Fikri</h1>
+          <p class="cert-npm" id="certStudentNPM">NPM: 2115061001 • PSO A</p>
+          <p class="cert-text">Telah sukses menyelesaikan seluruh rangkaian instruksi praktikum Sistem Operasi (Level 1 s/d Level 8) dengan pencapaian nilai:</p>
+          <div class="cert-score-chip" id="certTotalScore">NILAI GABUNGAN: 100 / 100</div>
+        </div>
+        <div class="cert-footer">
+          <span>Laboratorium Teknik Digital</span>
+          <span id="certTimestamp">Tanggal: 2026</span>
+        </div>
+      </div>
+      <div class="modal-actions center cert-actions">
+        <button type="button" class="btn btn-secondary" onclick="window.print()">🖨️ Cetak Rekap Nilai</button>
+        <button type="button" class="btn btn-primary" id="btnCloseCert">Tutup</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- =========================================================================
+       MODAL: KONFIRMASI BUKA PETUNJUK
+       ========================================================================= -->
+  <div class="modal-backdrop hidden" id="modalConfirmHint">
+    <div class="modal-box modal-confirm-box" style="max-width: 520px;">
+      <div class="modal-header">
+        <div class="modal-title-wrap">
+          <span class="modal-icon">💡</span>
+          <h3 id="modalHintTitle">Buka Petunjuk Perintah</h3>
+        </div>
+        <button type="button" class="modal-close-btn" id="closeConfirmHintModal">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="text-center" style="margin-bottom: 14px;">
+          <div class="confirm-penalty-badge">
+            <span class="penalty-icon">⚠️</span>
+            <span class="penalty-text" id="hintPenaltyBadge">PENALTI NILAI: <strong>-20 POIN</strong></span>
+          </div>
+          <p class="confirm-message" id="hintPenaltyMsg">
+            Pilih opsi petunjuk yang ingin Anda buka. Nilai Anda akan dipotong sesuai pilihan di bawah.
+          </p>
+        </div>
+
+        <!-- Hint Choice Radio Cards -->
+        <div class="hint-options-container" id="hintOptionsContainer">
+          <label class="hint-option-card active" id="cardOptSingleHint">
+            <input type="radio" name="modalHintChoice" id="radioOptSingle" value="single" checked>
+            <div class="hint-opt-body">
+              <div class="hint-opt-title-row">
+                <strong>🔍 Buka Petunjuk 1 Soal Saja</strong>
+                <span class="badge-opt-penalty">-20 Poin</span>
+              </div>
+              <p class="hint-opt-desc">Hanya membuka petunjuk sintaks perintah untuk 1 nomor soal yang Anda pilih.</p>
+              <div class="hint-soal-select-wrap" id="hintSoalSelectWrap">
+                <label for="modalSelectObjective" style="font-size: 11px; color: #94a3b8; display: block; margin-bottom: 4px;">Pilih nomor soal yang ingin dilihat:</label>
+                <select id="modalSelectObjective" class="form-control" style="font-size: 12px; padding: 6px 10px;"></select>
+              </div>
+            </div>
+          </label>
+
+          <label class="hint-option-card" id="cardOptAllHint">
+            <input type="radio" name="modalHintChoice" id="radioOptAll" value="all">
+            <div class="hint-opt-body">
+              <div class="hint-opt-title-row">
+                <strong>📖 Buka Semua Petunjuk Level Ini</strong>
+                <span class="badge-opt-penalty" id="badgeModalAllPenalty">-30 Poin</span>
+              </div>
+              <p class="hint-opt-desc" id="descModalAllPenalty">Membuka panduan lengkap untuk seluruh 5 soal pada level ini sekaligus.</p>
+            </div>
+          </label>
+        </div>
+
+        <p class="confirm-sub text-center" style="margin-top: 14px; margin-bottom: 0;">
+          Gunakan petunjuk hanya jika Anda benar-benar membutuhkan panduan sintaks perintah Linux.
+        </p>
+      </div>
+      <div class="modal-actions-confirm">
+        <button type="button" class="btn btn-secondary" id="btnCancelHint">Batal (Coba Mandiri)</button>
+        <button type="button" class="btn btn-warning-confirm" id="btnProceedHint">Ya, Buka Petunjuk Soal Ini (-20 Poin)</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- =========================================================================
+       MODAL: STATUS EVALUASI LEVEL (BELUM LENGKAP)
+       ========================================================================= -->
+  <div class="modal-backdrop hidden" id="modalIncompleteObjectives">
+    <div class="modal-box modal-eval-box">
+      <div class="modal-header">
+        <div class="modal-title-wrap">
+          <span class="modal-icon">📋</span>
+          <div>
+            <h3 id="evalModalTitle">Evaluasi Instruksi Tugas</h3>
+            <span class="modal-sub">Periksa status instruksi yang telah dan belum terpenuhi</span>
+          </div>
+        </div>
+        <button type="button" class="modal-close-btn" id="closeEvalModal">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p class="eval-guidance">Silakan lengkapi instruksi bertanda <span class="tag-unmet">❌ Belum Terpenuhi</span> melalui terminal Linux:</p>
+        <div class="eval-checklist-details" id="evalChecklistDetails"></div>
+      </div>
+      <div class="modal-actions center">
+        <button type="button" class="btn btn-primary" id="btnContinueWorking">Lanjutkan Pengerjaan 🚀</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Scripts -->
+  <script src="js/vfs.js"></script>
+  <script src="js/levels.js"></script>
+  <script src="js/terminal.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
