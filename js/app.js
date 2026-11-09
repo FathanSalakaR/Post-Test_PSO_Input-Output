@@ -15,7 +15,7 @@ const DEFAULT_CLASS_CODES = {
 };
 const ASPRAK_MASTER_PIN = 'asprak2026';
 // Webhook default untuk Google Sheets (dapat diubah melalui Portal Asprak)
-const DEFAULT_SHEETS_WEBHOOK_URL = '';
+const DEFAULT_SHEETS_WEBHOOK_URL = 'https://script.google.com/macros/s/AKfycbwsYhSXrbdK41ta3ySUVVe2-HUd4fGPvk7D75jhaAogg2niAlax9Oh83gOf0qMWAt2J/exec';
 
 class SoundEffects {
   constructor() {
