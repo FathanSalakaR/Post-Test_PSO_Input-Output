@@ -417,6 +417,7 @@
         <div class="asprak-nav-tabs">
           <button type="button" class="asprak-tab-btn active" id="tabBtnScores">📊 Rekap Nilai & Diagram</button>
           <button type="button" class="asprak-tab-btn" id="tabBtnCodes">🔑 Manajemen Kode Kelas</button>
+          <button type="button" class="asprak-tab-btn" id="tabBtnSheets">📗 Integrasi Google Sheets</button>
         </div>
 
         <!-- TAB 1: SCORES & BAR CHART -->
@@ -512,6 +513,132 @@
               <button type="button" class="btn btn-primary" id="btnSaveMasterPin">Ubah PIN</button>
             </div>
             <div id="pinChangeFeedback" class="hidden" style="margin-top: 8px; font-size: 12px; color: #10b981;">PIN Master berhasil diperbarui!</div>
+          </div>
+        </div>
+
+        <!-- TAB 3: GOOGLE SHEETS INTEGRATION -->
+        <div class="asprak-tab-pane hidden" id="paneSheets">
+          <div class="code-manager-card">
+            <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px;">
+              <div>
+                <h4 style="display: flex; align-items: center; gap: 8px;">
+                  <span>📗 Integrasi Rekap Otomatis Google Sheets</span>
+                  <span class="status-badge-sheets disconnected" id="badgeSheetsStatus">Belum Dikonfigurasi</span>
+                </h4>
+                <p class="code-manager-desc" style="margin-top: 4px;">
+                  Hubungkan post-test ke Google Sheets agar seluruh nilai praktikan dari laptop manapun langsung otomatis terkirim dan tersimpan rapi di spreadsheet Anda secara real-time.
+                </p>
+              </div>
+            </div>
+
+            <!-- Webhook URL Configuration Form -->
+            <div style="margin-top: 14px;">
+              <label for="inputSheetsWebhookUrl" style="font-size: 12px; font-weight: 600; color: #e2e8f0; display: block; margin-bottom: 6px;">
+                URL Web App Google Apps Script (Webhook):
+              </label>
+              <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                <input type="url" id="inputSheetsWebhookUrl" placeholder="https://script.google.com/macros/s/AKfycb.../exec" style="flex: 1; min-width: 280px; padding: 8px 12px; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.15); border-radius: 6px; color: #fff; font-size: 13px;">
+                <button type="button" class="btn btn-primary" id="btnSaveSheetsUrl">Simpan URL</button>
+                <button type="button" class="btn btn-secondary" id="btnTestSheets">🧪 Tes Kirim Uji Coba</button>
+              </div>
+              <div id="sheetsFeedback" class="hidden" style="margin-top: 8px; font-size: 12px;"></div>
+            </div>
+
+            <!-- Sync All Existing Records Button -->
+            <div style="margin-top: 16px; padding-top: 14px; border-top: 1px solid rgba(255,255,255,0.08); display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px;">
+              <div>
+                <strong style="font-size: 12px; color: #f1f5f9;">Sinkronisasi Seluruh Nilai Lokal</strong>
+                <p style="font-size: 11px; color: #94a3b8; margin: 2px 0 0 0;">Kirim ulang seluruh riwayat nilai praktikan yang tersimpan di perangkat ini ke Google Sheets.</p>
+              </div>
+              <button type="button" class="btn btn-export-csv" id="btnSyncAllToSheets">
+                <span>📤 Kirim Semua Data ke Google Sheets</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Step-by-Step Setup Guide Card with Copyable Script -->
+          <div class="code-manager-card" style="margin-top: 16px;">
+            <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px;">
+              <h4>📋 Panduan Pembuatan Google Sheets (Hanya 2 Menit)</h4>
+              <button type="button" class="btn btn-secondary" id="btnCopyAppsScript" style="font-size: 11px; padding: 5px 12px;">
+                📋 Salin Kode Apps Script
+              </button>
+            </div>
+            <ol class="sheets-guide-steps" style="margin: 10px 0 14px 20px; font-size: 12px; color: #cbd5e1; line-height: 1.6;">
+              <li>Buat spreadsheet baru di <a href="https://sheets.new" target="_blank" style="color: #38bdf8; text-decoration: underline;">Google Sheets</a> (beri nama misalnya: <strong>Rekap Post-Test SO</strong>).</li>
+              <li>Di Google Sheets, klik menu <strong>Ekstensi (Extensions)</strong> &gt; <strong>Apps Script</strong>.</li>
+              <li>Hapus seluruh isi file <code>Code.gs</code>, lalu paste kode di bawah ini:</li>
+            </ol>
+
+            <pre class="sheets-code-snippet" id="snippetAppsScript"><code>function doPost(e) {
+  var lock = LockService.getScriptLock();
+  lock.tryLock(10000);
+  try {
+    var doc = SpreadsheetApp.getActiveSpreadsheet();
+    var sheet = doc.getSheetByName("Nilai") || doc.getSheets()[0];
+    var data = JSON.parse(e.postData.contents);
+
+    // Buat baris header otomatis jika sheet masih kosong
+    if (sheet.getLastRow() === 0) {
+      sheet.appendRow([
+        "Waktu Submit",
+        "NPM",
+        "Nama Praktikan",
+        "Kelas",
+        "Level Tercapai",
+        "Nilai Murni",
+        "Penalti Petunjuk",
+        "Nilai Akhir",
+        "Status"
+      ]);
+      sheet.getRange(1, 1, 1, 9).setFontWeight("bold");
+    }
+
+    // Cari apakah NPM praktikan ini sudah ada (update baris agar tidak duplikat)
+    var values = sheet.getDataRange().getValues();
+    var existingRow = -1;
+    for (var i = 1; i < values.length; i++) {
+      if (String(values[i][1]).trim() === String(data.npm).trim()) {
+        existingRow = i + 1;
+        break;
+      }
+    }
+
+    var rowData = [
+      data.timestamp || new Date().toLocaleString("id-ID"),
+      data.npm,
+      data.name,
+      data.class,
+      data.levelAchieved,
+      data.pureScore,
+      data.penalties,
+      data.netScore,
+      data.status
+    ];
+
+    if (existingRow > 0) {
+      sheet.getRange(existingRow, 1, 1, rowData.length).setValues([rowData]);
+    } else {
+      sheet.appendRow(rowData);
+    }
+
+    return ContentService.createTextOutput(JSON.stringify({ status: "success" }))
+      .setMimeType(ContentService.MimeType.JSON);
+  } catch (err) {
+    return ContentService.createTextOutput(JSON.stringify({ status: "error", message: err.toString() }))
+      .setMimeType(ContentService.MimeType.JSON);
+  } finally {
+    lock.releaseLock();
+  }
+}</code></pre>
+
+            <ol start="4" class="sheets-guide-steps" style="margin: 12px 0 0 20px; font-size: 12px; color: #cbd5e1; line-height: 1.6;">
+              <li>Klik tombol <strong>Terapkan (Deploy)</strong> di kanan atas &gt; pilih <strong>Deployment baru (New deployment)</strong>.</li>
+              <li>Klik ikon gerigi ⚙️ di samping <em>Pilih jenis</em> &gt; pilih <strong>Aplikasi Web (Web App)</strong>.</li>
+              <li>Atur <strong>Akses (Who has access)</strong> ke: <strong style="color: #f59e0b;">Siapa saja (Anyone)</strong> agar praktikan bisa mengirim nilai tanpa harus login akun Google.</li>
+              <li>Klik <strong>Terapkan (Deploy)</strong> &gt; Berikan Izin Akses (Authorize Access).</li>
+              <li>Salin <strong>URL Aplikasi Web (Web App URL)</strong> yang berakhiran <code>/exec</code>, lalu tempelkan ke kolom URL di atas dan klik <strong>Simpan URL</strong>. Selesai!</li>
+            </ol>
           </div>
         </div>
       </div>

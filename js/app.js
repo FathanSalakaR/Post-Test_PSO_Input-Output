@@ -14,6 +14,8 @@ const DEFAULT_CLASS_CODES = {
   'PSO E': 'LTD-E26'
 };
 const ASPRAK_MASTER_PIN = 'asprak2026';
+// Webhook default untuk Google Sheets (dapat diubah melalui Portal Asprak)
+const DEFAULT_SHEETS_WEBHOOK_URL = '';
 
 class SoundEffects {
   constructor() {
@@ -365,23 +367,66 @@ class AppController {
     // Asprak Navigation Tabs
     const tabScores = document.getElementById('tabBtnScores');
     const tabCodes = document.getElementById('tabBtnCodes');
+    const tabSheets = document.getElementById('tabBtnSheets');
     const paneScores = document.getElementById('paneScores');
     const paneCodes = document.getElementById('paneCodes');
-    if (tabScores && tabCodes && paneScores && paneCodes) {
+    const paneSheets = document.getElementById('paneSheets');
+
+    const switchAsprakTab = (activeTab, activePane) => {
+      [tabScores, tabCodes, tabSheets].forEach(t => { if (t) t.classList.remove('active'); });
+      [paneScores, paneCodes, paneSheets].forEach(p => { if (p) p.classList.add('hidden'); });
+      if (activeTab) activeTab.classList.add('active');
+      if (activePane) activePane.classList.remove('hidden');
+    };
+
+    if (tabScores) {
       tabScores.addEventListener('click', () => {
-        tabScores.classList.add('active');
-        tabCodes.classList.remove('active');
-        paneScores.classList.remove('hidden');
-        paneCodes.classList.add('hidden');
+        switchAsprakTab(tabScores, paneScores);
         this.renderAsprakTable();
         this.renderBarChart();
       });
+    }
+    if (tabCodes) {
       tabCodes.addEventListener('click', () => {
-        tabCodes.classList.add('active');
-        tabScores.classList.remove('active');
-        paneCodes.classList.remove('hidden');
-        paneScores.classList.add('hidden');
+        switchAsprakTab(tabCodes, paneCodes);
         this.renderClassCodeGrid();
+      });
+    }
+    if (tabSheets) {
+      tabSheets.addEventListener('click', () => {
+        switchAsprakTab(tabSheets, paneSheets);
+        this.updateSheetsTabDisplay();
+      });
+    }
+
+    // Google Sheets Integration Handlers
+    const btnSaveSheets = document.getElementById('btnSaveSheetsUrl');
+    if (btnSaveSheets) {
+      btnSaveSheets.addEventListener('click', () => this.saveSheetsWebhookUrl());
+    }
+
+    const btnTestSheets = document.getElementById('btnTestSheets');
+    if (btnTestSheets) {
+      btnTestSheets.addEventListener('click', () => this.testGoogleSheetsConnection());
+    }
+
+    const btnSyncAllSheets = document.getElementById('btnSyncAllToSheets');
+    if (btnSyncAllSheets) {
+      btnSyncAllSheets.addEventListener('click', () => this.syncAllRecordsToGoogleSheets());
+    }
+
+    const btnCopyCode = document.getElementById('btnCopyAppsScript');
+    if (btnCopyCode) {
+      btnCopyCode.addEventListener('click', () => {
+        const snippetEl = document.getElementById('snippetAppsScript');
+        if (snippetEl) {
+          navigator.clipboard.writeText(snippetEl.textContent.trim()).then(() => {
+            btnCopyCode.textContent = '✓ Kode Berhasil Disalin!';
+            setTimeout(() => { btnCopyCode.textContent = '📋 Salin Kode Apps Script'; }, 2500);
+          }).catch(() => {
+            alert('Silakan salin kode secara manual dari kotak di bawah.');
+          });
+        }
       });
     }
 
@@ -1046,16 +1091,21 @@ class AppController {
       // Switch to scores tab
       let tabScores = document.getElementById('tabBtnScores');
       let tabCodes = document.getElementById('tabBtnCodes');
+      let tabSheets = document.getElementById('tabBtnSheets');
       let paneScores = document.getElementById('paneScores');
       let paneCodes = document.getElementById('paneCodes');
+      let paneSheets = document.getElementById('paneSheets');
       if (tabScores) tabScores.classList.add('active');
       if (tabCodes) tabCodes.classList.remove('active');
+      if (tabSheets) tabSheets.classList.remove('active');
       if (paneScores) paneScores.classList.remove('hidden');
       if (paneCodes) paneCodes.classList.add('hidden');
+      if (paneSheets) paneSheets.classList.add('hidden');
 
       this.renderAsprakTable();
       this.renderBarChart();
       this.renderClassCodeGrid();
+      this.updateSheetsTabDisplay();
       this.sound.playSuccessTone();
     } else {
       this.sound.playErrorTone();
@@ -1096,6 +1146,11 @@ class AppController {
     }
 
     localStorage.setItem('osquest_asprak_records', JSON.stringify(records));
+
+    // Kirim otomatis ke Google Sheets jika webhook URL telah diatur
+    if (this.student.npm && this.student.npm !== 'GUEST') {
+      this.sendRecordToGoogleSheets(recordObj);
+    }
   }
 
   getAsprakRecords() {
@@ -1465,6 +1520,181 @@ class AppController {
         </div>
       `;
     }
+  }
+
+  // =========================================================================
+  // Google Sheets Integration Methods
+  // =========================================================================
+  getSheetsWebhookUrl() {
+    let saved = localStorage.getItem('ltd_sheets_webhook_url');
+    if (saved && saved.trim().length > 0) return saved.trim();
+    return DEFAULT_SHEETS_WEBHOOK_URL || '';
+  }
+
+  saveSheetsWebhookUrl() {
+    let inputEl = document.getElementById('inputSheetsWebhookUrl');
+    let feedbackEl = document.getElementById('sheetsFeedback');
+    let url = inputEl ? inputEl.value.trim() : '';
+
+    if (!url) {
+      localStorage.removeItem('ltd_sheets_webhook_url');
+      this.updateSheetsTabDisplay();
+      if (feedbackEl) {
+        feedbackEl.textContent = 'ℹ️ URL Webhook dihapus. Integrasi Google Sheets dinonaktifkan.';
+        feedbackEl.style.color = '#f59e0b';
+        feedbackEl.classList.remove('hidden');
+      }
+      return;
+    }
+
+    if (!url.startsWith('https://script.google.com/macros/s/')) {
+      if (feedbackEl) {
+        feedbackEl.textContent = '❌ Format URL tidak valid! URL harus diawali dengan https://script.google.com/macros/s/.../exec';
+        feedbackEl.style.color = '#ef4444';
+        feedbackEl.classList.remove('hidden');
+      }
+      return;
+    }
+
+    localStorage.setItem('ltd_sheets_webhook_url', url);
+    this.updateSheetsTabDisplay();
+    if (feedbackEl) {
+      feedbackEl.textContent = '✅ URL Webhook Google Sheets berhasil disimpan!';
+      feedbackEl.style.color = '#10b981';
+      feedbackEl.classList.remove('hidden');
+      setTimeout(() => { if (feedbackEl) feedbackEl.classList.add('hidden'); }, 4000);
+    }
+    this.sound.playSuccessTone();
+  }
+
+  updateSheetsTabDisplay() {
+    let inputEl = document.getElementById('inputSheetsWebhookUrl');
+    let badgeEl = document.getElementById('badgeSheetsStatus');
+    let currentUrl = this.getSheetsWebhookUrl();
+
+    if (inputEl) inputEl.value = currentUrl;
+
+    if (badgeEl) {
+      if (currentUrl) {
+        badgeEl.textContent = 'Tersambung ✓';
+        badgeEl.className = 'status-badge-sheets connected';
+      } else {
+        badgeEl.textContent = 'Belum Dikonfigurasi';
+        badgeEl.className = 'status-badge-sheets disconnected';
+      }
+    }
+  }
+
+  sendRecordToGoogleSheets(recordObj) {
+    let url = this.getSheetsWebhookUrl();
+    if (!url) return Promise.resolve(false);
+
+    // Menggunakan mode no-cors dan Content-Type text/plain agar tidak terblokir preflight CORS browser
+    return fetch(url, {
+      method: 'POST',
+      mode: 'no-cors',
+      cache: 'no-cache',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify(recordObj)
+    }).then(() => true).catch(err => {
+      console.warn('Gagal sinkronisasi ke Google Sheets:', err);
+      return false;
+    });
+  }
+
+  testGoogleSheetsConnection() {
+    let url = this.getSheetsWebhookUrl();
+    let feedbackEl = document.getElementById('sheetsFeedback');
+    let btnTest = document.getElementById('btnTestSheets');
+
+    if (!url) {
+      if (feedbackEl) {
+        feedbackEl.textContent = '⚠️ Masukkan dan simpan URL Webhook Google Apps Script terlebih dahulu!';
+        feedbackEl.style.color = '#f59e0b';
+        feedbackEl.classList.remove('hidden');
+      }
+      return;
+    }
+
+    if (btnTest) {
+      btnTest.disabled = true;
+      btnTest.textContent = '⏳ Mengirim...';
+    }
+
+    let testPayload = {
+      timestamp: new Date().toLocaleString('id-ID'),
+      npm: '2415061108_TEST',
+      name: 'Praktikan Uji Coba (Test Connection)',
+      class: 'PSO A',
+      levelAchieved: 'Level 8',
+      pureScore: 100,
+      penalties: 0,
+      netScore: 100,
+      status: 'LULUS'
+    };
+
+    this.sendRecordToGoogleSheets(testPayload).then(() => {
+      if (feedbackEl) {
+        feedbackEl.innerHTML = `✅ Baris data uji coba berhasil dikirim ke Google Sheets! Silakan periksa spreadsheet Anda. Jika baris uji coba sudah muncul, Anda dapat menghapusnya.`;
+        feedbackEl.style.color = '#10b981';
+        feedbackEl.classList.remove('hidden');
+      }
+      this.sound.playSuccessTone();
+    }).finally(() => {
+      if (btnTest) {
+        btnTest.disabled = false;
+        btnTest.textContent = '🧪 Tes Kirim Uji Coba';
+      }
+    });
+  }
+
+  syncAllRecordsToGoogleSheets() {
+    let url = this.getSheetsWebhookUrl();
+    let feedbackEl = document.getElementById('sheetsFeedback');
+    let btnSync = document.getElementById('btnSyncAllToSheets');
+
+    if (!url) {
+      alert('⚠️ Silakan simpan URL Webhook Google Apps Script terlebih dahulu pada kolom di atas!');
+      return;
+    }
+
+    let records = this.getAsprakRecords();
+    if (!records || records.length === 0) {
+      alert('ℹ️ Tidak ada data praktikan lokal yang tersimpan saat ini.');
+      return;
+    }
+
+    if (!confirm(`Kirim seluruh ${records.length} data praktikan lokal ke Google Sheets?`)) return;
+
+    if (btnSync) {
+      btnSync.disabled = true;
+      btnSync.textContent = `⏳ Mengirim 0/${records.length}...`;
+    }
+
+    let count = 0;
+    let sendNext = (i) => {
+      if (i >= records.length) {
+        if (btnSync) {
+          btnSync.disabled = false;
+          btnSync.textContent = '📤 Kirim Semua Data ke Google Sheets';
+        }
+        if (feedbackEl) {
+          feedbackEl.textContent = `✅ Berhasil mengirim ${count} data praktikan ke Google Sheets!`;
+          feedbackEl.style.color = '#10b981';
+          feedbackEl.classList.remove('hidden');
+        }
+        this.sound.playSuccessTone();
+        return;
+      }
+
+      this.sendRecordToGoogleSheets(records[i]).then(() => {
+        count++;
+        if (btnSync) btnSync.textContent = `⏳ Mengirim ${count}/${records.length}...`;
+        setTimeout(() => sendNext(i + 1), 250);
+      });
+    };
+
+    sendNext(0);
   }
 
   // =========================================================================

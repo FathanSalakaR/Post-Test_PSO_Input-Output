@@ -2197,4 +2197,43 @@ code, kbd, pre {
   flex: 1;
 }
 
+/* ==========================================================================
+   GOOGLE SHEETS INTEGRATION STYLES
+   ========================================================================== */
+.status-badge-sheets {
+  font-size: 11px;
+  font-weight: 700;
+  padding: 3px 10px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.status-badge-sheets.connected {
+  background: rgba(16, 185, 129, 0.2);
+  color: #10b981;
+  border: 1px solid rgba(16, 185, 129, 0.5);
+}
+.status-badge-sheets.disconnected {
+  background: rgba(245, 158, 11, 0.2);
+  color: #f59e0b;
+  border: 1px solid rgba(245, 158, 11, 0.5);
+}
+.sheets-code-snippet {
+  background: #090d16;
+  border: 1px solid #1e293b;
+  border-radius: var(--radius-md);
+  padding: 14px;
+  font-size: 12px;
+  color: #7dd3fc;
+  line-height: 1.5;
+  max-height: 280px;
+  overflow-y: auto;
+  font-family: var(--font-mono);
+  white-space: pre;
+}
+.sheets-guide-steps li {
+  margin-bottom: 6px;
+}
+
 
