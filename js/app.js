@@ -181,6 +181,18 @@ class AppController {
       return;
     }
 
+    // Cek apakah praktikan dengan NPM ini sudah kehabisan waktu ujian
+    let expiredList = [];
+    try { expiredList = JSON.parse(localStorage.getItem('osquest_expired_npms') || '[]'); } catch (e) {}
+    if (expiredList.includes(npm)) {
+      if (errEl) {
+        errEl.textContent = `Waktu ujian 25 menit untuk NPM ${npm} telah habis dan nilai sudah dikirimkan ke Asisten Praktikum. Jika membutuhkan reset, silakan hubungi Asprak.`;
+        errEl.classList.remove('hidden');
+      }
+      this.sound.playErrorTone ? this.sound.playErrorTone() : this.sound.playTone(220, 'sawtooth', 0.25, 0.15);
+      return;
+    }
+
     const prevNpm = localStorage.getItem('osquest_student_npm');
     const prevName = localStorage.getItem('osquest_student_name');
     const isDifferentUser = !prevNpm || prevNpm !== npm || prevName !== name;
@@ -219,6 +231,10 @@ class AppController {
     } else {
       this.terminal.updatePromptDisplay();
     }
+
+    // Pastikan terminal aktif dan dapat menerima input
+    if (this.terminal.inputEl) this.terminal.inputEl.disabled = false;
+    if (this.terminal.multilineInputEl) this.terminal.multilineInputEl.disabled = false;
 
     this.updateStudentHeader();
     this.startTimer();
@@ -265,7 +281,57 @@ class AppController {
       } else {
         clearInterval(this.timerInterval);
         this.sound.playPenaltyWarning();
-        alert("Waktu pengerjaan 25 menit untuk level ini telah selesai! Silakan tunjukkan hasil pengerjaan kepada asisten praktikum.");
+
+        // 1. Kunci NPM praktikan ke daftar waktu habis agar tidak bisa login ulang tanpa izin Asprak
+        let expiredList = [];
+        try { expiredList = JSON.parse(localStorage.getItem('osquest_expired_npms') || '[]'); } catch (e) {}
+        if (this.student.npm && !expiredList.includes(this.student.npm)) {
+          expiredList.push(this.student.npm);
+          localStorage.setItem('osquest_expired_npms', JSON.stringify(expiredList));
+        }
+
+        // 2. Kunci seluruh input terminal dan tutup paksa editor/sesi aktif
+        if (this.terminal) {
+          if (this.terminal.inputEl) {
+            this.terminal.inputEl.disabled = true;
+            this.terminal.inputEl.blur();
+          }
+          if (this.terminal.multilineInputEl) {
+            this.terminal.multilineInputEl.disabled = true;
+            this.terminal.multilineInputEl.blur();
+          }
+          if (this.terminal.activeMultilineSession) {
+            if (this.terminal.multilineBoxEl) this.terminal.multilineBoxEl.classList.add('hidden');
+            this.terminal.activeMultilineSession = null;
+          }
+          if (this.terminal.activeNanoSession) {
+            this.terminal.closeNanoView();
+          }
+        }
+
+        // 3. Tutup seluruh modal popup yang sedang terbuka
+        ['modalConfirmHint', 'modalIncompleteObjectives', 'modalVirtualBrowser', 'modalFileViewer', 'modalVictory'].forEach(id => {
+          this.closeModal(id);
+        });
+
+        // 4. Sinkronkan nilai akhir dan kirimkan ke Google Sheets Asprak
+        this.syncAsprakRecord();
+
+        const finishedStudentName = this.student.name || 'Praktikan';
+        const finishedStudentNpm = this.student.npm || '';
+
+        // 5. Beri peringatan bahwa waktu ujian telah selesai
+        alert(`⏰ WAKTU UJIAN 25 MENIT TELAH SELESAI!\n\nWaktu pengerjaan Anda telah habis. Seluruh jawaban dan nilai akhir Anda telah otomatis tersimpan dan dikirimkan ke Asisten Praktikum.\n\nSistem akan menutup lembar ujian dan mengembalikan Anda ke halaman login.`);
+
+        // 6. Tutup workspace dan kembalikan ke halaman login
+        this._logoutToLogin();
+
+        // 7. Tampilkan pesan status di halaman login
+        const errEl = document.getElementById('loginErrorMessage');
+        if (errEl) {
+          errEl.textContent = `⏰ Waktu ujian 25 menit untuk ${finishedStudentName} (${finishedStudentNpm}) telah habis. Nilai akhir Anda telah otomatis tersimpan dan terkirim ke Google Sheets Asisten Praktikum.`;
+          errEl.classList.remove('hidden');
+        }
       }
     }, 1000);
   }
@@ -453,10 +519,11 @@ class AppController {
       btnClearData.addEventListener('click', () => {
         if (confirm("Peringatan: Apakah Anda yakin ingin mengosongkan seluruh riwayat rekap nilai praktikan?")) {
           localStorage.removeItem('osquest_asprak_records');
+          localStorage.removeItem('osquest_expired_npms');
           this.syncAsprakRecord();
           this.renderAsprakTable();
           this.renderBarChart();
-          alert("Seluruh data rekap telah dibersihkan.");
+          alert("Seluruh data rekap dan status batas waktu praktikan telah dibersihkan.");
         }
       });
     }
